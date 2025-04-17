@@ -1,0 +1,299 @@
+\documentclass[sigconf,authordraft]{acmart}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+\copyrightyear{2025}
+\acmYear{2025}
+\setcopyright{none}
+\acmConference[StudConf '25]{16th Student Conference on Software Engineering and Database Systems}{Summer Term 2025}{Magdeburg, Germany}
+
+
+\begin{document}
+
+\title{Graph traversal languages for large-scale graph processing on modern hardware}
+
+\author{Pascal Zittlau}
+\email{pascal.zittlau@ovgu.de}
+\affiliation{
+	\institution{Otto-von-Guericke-Universität}
+	\city{Magdeburg}
+	\state{Saxony-Anhalt}
+	\country{Germany}
+}
+
+\begin{abstract}
+	The increasing scale and complexity of graph-structured data necessitate efficient query processing, especially on modern, heterogeneous hardware architectures.
+	This paper surveys the state-of-the-art in graph traversal languages designed for large-scale graph processing, focusing on both Property Graph models and RDF graphs.
+	It also explores how standard graph algorithms, such as Shortest Path and PageRank, are expressed, integrated, and optimized within query languages for these data models.
+	We examine advanced techniques for optimizing query execution, including parallelization strategies for multi-core CPUs and GPUs, the potential of specialized hardware acceleration using FPGAs, and vectorization via SIMD instructions.
+	By synthesizing these findings, we identify key challenges and outline future research directions aimed at enhancing the performance, scalability, and hardware utilization of graph traversal languages in demanding analytical workloads.
+\end{abstract}
+
+\begin{CCSXML}
+	<ccs2012>
+	<concept>
+	<concept_id>00000000.0000000.0000000</concept_id>
+	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_significance>500</concept_significance>
+	</concept>
+	<concept>
+	<concept_id>00000000.00000000.00000000</concept_id>
+	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_significance>300</concept_significance>
+	</concept>
+	<concept>
+	<concept_id>00000000.00000000.00000000</concept_id>
+	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_significance>100</concept_significance>
+	</concept>
+	<concept>
+	<concept_id>00000000.00000000.00000000</concept_id>
+	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_significance>100</concept_significance>
+	</concept>
+	</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+\ccsdesc[300]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+\ccsdesc{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+\ccsdesc[100]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+
+%%
+%% Keywords. The author(s) should pick words that accurately describe
+%% the work being presented. Separate the keywords with commas.
+\keywords{Do, Not, Us, This, Code, Put, the, Correct, Terms, for,
+	Your, Paper}
+%% A "teaser" image appears between the author and affiliation
+%% information and the body of the document, and typically spans the
+%% page.
+% \begin{teaserfigure}
+% 	\includegraphics[width=\textwidth]{sampleteaser}
+% 	\caption{Seattle Mariners at Spring Training, 2010.}
+% 	\Description{Enjoying the baseball game from the third-base
+% 		seats. Ichiro Suzuki preparing to bat.}
+% 	\label{fig:teaser}
+% \end{teaserfigure}
+
+\maketitle
+
+\section{Introduction}
+
+\begin{itemize}
+	\item graphs are a natural abstraction for modeling data
+	\item graphs are becoming more important(social networks, scam detection,...)
+	\item modern graphs can have billion or trillion of nodes and edges (to big for one machine)
+	\item directly operating on graph is hard -> query language
+	\item wide variety of query languages available
+
+	\item access patterns traversing graphs are often random and unpredictable (poor cache locality)
+
+	\item modern computers are different
+	\item modern CPUs can have hundreds of cores -> efficient parallelism is needed
+	\item SIMD is getting wider
+	\item GPUs are more prevalent than ever
+	\item FPGAs could also be good
+	\item In-memory computing(IMC) is an active research topic
+
+	\item Overview over remaining paper
+\end{itemize}
+
+\section{Background}
+
+\subsection{Graph Data Models}
+
+\paragraph{Resource Description Framework (RDF)}
+\begin{itemize}
+	\item W3C standard
+	\item represents information as collection of triples
+	\item subject, predicate, object
+	\item these naturaly form a directed, labeled graph (subject and object = node,
+	      predicate = edge)
+	\item edge-centric
+
+	\item strengths: standardization, formal semantics
+	\item downside: certain structures can't be directly modeled (i.e. properties on
+	      relationships require reification)
+\end{itemize}
+
+\paragraph{Labeled Property Graph (LPG)}
+\begin{itemize}
+	\item represents data using nodes, relationships, properties, labels
+	\item nodes are entities and can possess multiple labels and properties
+	\item relationships connect pairs of nodes, are directed, have a single label and can have properties
+	\item node-centric
+
+	\item strengths: often schemaless/-flexible but can also support rigid
+	      schemas, flexible data modeling, intuitive representation
+	\item downsides: lack of standardization (less with openCypher)
+\end{itemize}
+
+\subsection{Large-Scale Graph Processing}
+
+what things have to be thought about when moving to a cluster of machines?
+
+\begin{itemize}
+	\item irregular data access (poor spatial and temporal locality, cache misses)
+	\item memory bandwidth limitations (when just doing pointer chasing and comparisons, cpu no longer bottleneck)
+	\item scalability and partitioning (optimal partitioning is np-hard, different partitioning strategies may favor different types of queries)
+	\item parallelism is hard to exploit due to data dependencies
+	\item graphs are not static but change (has to be regarded for partitioning, etc.)
+\end{itemize}
+
+What should the system do? Graph traversal queries (friends-of-friends) or global graph algorithms (pagerank)? Probably has to be designed differently for each
+
+\section{Established Graph Traversal Languages}
+
+\subsection{(open-)Cypher}
+\begin{itemize}
+	\item originally developed for Neo4j, openCypher is an open standard developed from that
+	\item declarative, property graphs
+	\item ASCII-art-like syntax -> tries to make queries intuitiv (like whiteboard)
+	\item common keywords: MATCH, WHERE, RETURN, WITH
+	\item fixed/variable length paths
+	\item semantics are like pattern matching
+	\item query pipeline: parsing, semantic verification, optimizing (logical and physical execution plan), executing the plan
+	\item used in many systems: Neo4j, SAP HANA Graph, RedisGraph, Memgraph, AgensGraph, Kùzu
+
+	\item optimization on efficient pattern matching, path traversal algorithms, leveraging parallelism
+	\item challenges on incremental views, continuous queries, vector search, temporal extensions
+\end{itemize}
+
+\subsection{Gremlin}
+\begin{itemize}
+	\item language of Apache TinkerPop framework
+	\item property graphs
+	\item functional, data-flow language
+	\item supports procedural and declarative queries
+	\item query is sequence of steps evaluated from left to right (traversal-oriented)
+	\item each step performs an atomic operation on the stream of data
+	\item designed to be embedded within host programming languages
+
+	\item OLTP and OLAP mode
+	\item optimization through rewriting sequence of steps before execution
+	\item parallel execution is possible with GraphComputer model (RDMA, adaptive parallelism control), GPU acceleration gets explored within BitGraph
+\end{itemize}
+
+\subsection{SPARQL}
+\begin{itemize}
+	\item W3C query language for RDF graphs
+	\item declarative, based on graph pattern matching
+	\item similar syntax to SQL (SELECT, WHERE, FILTER, OPTIONAL)
+	\item the core is the basic graph pattern (BGP, set of triple patterns) with variables allowed at any place
+	\item semantics is finding all subgraphs that match the BGP, while binding the variables in the patterns to the RDF terms from the data
+	\item special case is the possibility of handling non-explicit triples, that can be inferred based on ontologies
+	\item SPARQL 1.1 allows specifying regular expressions over the edge label, enabling easier reachability queries
+
+	\item query processing is finding efficient execution plans for the joins required to match a BGP
+	\item specialized indexing structures for triples
+	\item techniques for handling RDF reasoning
+	\item vectorization and parallel processing are desirable
+\end{itemize}
+
+\subsection{Comparative Analysis}
+\begin{itemize}
+	\item show similarities and differences
+	\item procedural vs declarative for large/small queries
+	\item table, for easy comparison (data model, paradigm, turing-complete, extensibility, typical optimization focus)
+\end{itemize}
+
+\section{Emerging Standards}
+
+\subsection{ISO/IEC GQL}
+\begin{itemize}
+	\item new standard in April 2024 (ISO/IEC 39075)
+	\item first new ISO db language since SQL itself
+	\item supports querying, DDL, DML
+	\item aims to fuse proven concepts from existing graph query languages (openCypher, PGQL, GSQL, etc.) while aligning with SQL
+	\item ASCII-art like Cypher
+	\item schema-flexible and -constrained
+	\item SQL compatible data types
+	\item defines a transaction model
+\end{itemize}
+
+\subsection{SQL/PGQ}
+\begin{itemize}
+	\item goal is to allow graph queries within SQL while leveraging existing RDMS
+	\item defines syntax for LPGs on top of relational tables
+	\item focuses on read-only graph queries
+\end{itemize}
+
+\section{Accelaring Traversal on Modern Hardware}
+\subsection{Parallel Processing on Multi-Core CPUs}
+\begin{itemize}
+	\item parallel, simd
+	\item bulk synchronous parallel (BSP), asynchronous models
+	\item load balancing between cores, minimizing synchronization and communication
+\end{itemize}
+
+\subsection{Vectorization (SIMD)}
+\begin{itemize}
+	\item manual or auto vectorization
+	\item AoS vs SoA
+	\item data quantization techniques can increase performance even more
+	\item challenges are branches -> masking/branchless code
+\end{itemize}
+
+\subsection{GPU Acceleration}
+\begin{itemize}
+	\item GPUs are good for data-intensive things like graph processing
+	\item offloading computationally intensive parts of a query or entire algorithms to the GPU
+	\item potentially partitioning is needed
+
+	\item hard to program effectively (diverging execution paths within warps, uncoalesced memory accesses, mapping algorithms on MPP, PCIe throughput vs latency)
+	\item but if done can be highly effective
+\end{itemize}
+
+\subsection{FPGA Acceleration}
+\begin{itemize}
+	\item allows for designing custom hardware for specific applications
+	\item neighbor list traversal, property filtering, pattern matching
+	\item graph partitioning and data placement strategies are necessary
+	\item specialization is also hard when different kinds of queries need to be processed
+	\item potential for extreme performance and energy
+\end{itemize}
+
+\subsection*{Summary}
+\begin{itemize}
+	\item no hardware platform is universally the best -> combination should be chosen
+	\item explain, when to choose which (latency -> cpu, throughput -> gpu, ...)
+	\item comparison table (pros, cons, key techniques, example, applicability to graph traversal)
+\end{itemize}
+
+\section{Advanced Query Processing Optimizations}
+optional (probably to much, if included; Or just mention in other parts)
+\begin{itemize}
+	\item factorization
+	\item morsel-driven-parallelism
+	\item worst-case optimal joins (WCOJ)
+	\item GraphBLAS
+\end{itemize}
+
+\section{Graph Algorithms via Traversal Languages}
+\begin{itemize}
+	\item How do Cypher, Gremlin and SPARQL support common graph operations?
+	\item shortest path, PageRank
+\end{itemize}
+
+\section{State-of-the-Art, Challenges, and Future}
+\begin{itemize}
+	% SOTA
+	\item What languages seem promising? What abstractions do they provide?
+	\item How can common graph algorithms be modeled in these languages?
+	\item What hardware is used and explored?
+
+	      % Challenges
+	\item What Query Optimization techniques haven't gone from theory to practice?
+	\item How to manage Scalability Limits?
+	\item How to handle dynamic graphs and schema evolution?
+	\item Standardized Benchmarking?
+
+	      % Future
+	\item Learded Query Optimization
+	\item Adaptive/Dynamic Query Processing
+	\item Hardware-Software Co-design and Unified Execution Runtimes
+\end{itemize}
+
+\end{document}
