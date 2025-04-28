@@ -1,0 +1,78 @@
+% Copyright (c) 2006-2024 Michael Kuhn
+%
+% Permission to use, copy, modify, and/or distribute this software for any
+% purpose with or without fee is hereby granted.
+%
+% THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+% REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+% AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+% INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+% LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+% OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+% PERFORMANCE OF THIS SOFTWARE.
+
+\mode<presentation>
+
+\usetheme[
+	sectionpage=none,
+	numbering=fraction,
+	progressbar=frametitle,
+]{metropolis}
+
+\definecolor{ovgu-brightblue}{HTML}{009EE3}
+\definecolor{ovgu-blue}{HTML}{0068B4}
+\definecolor{ovgu-darkgray}{HTML}{606060}
+\definecolor{ovgu-lightgray}{HTML}{C0C0C0}
+\definecolor{ovgu-green}{HTML}{94C12D}
+\definecolor{ovgu-orange}{HTML}{F39100}
+\definecolor{ovgu-purple}{HTML}{7A003F}
+\definecolor{ovgu-red}{HTML}{D13F58}
+
+\setbeamercolor{alerted text}{fg=ovgu-purple}
+\setbeamercolor{example text}{fg=ovgu-blue}
+
+\setbeamercolor{frametitle}{fg=ovgu-blue,bg=black!7}
+\setbeamercolor{progress bar}{fg=ovgu-purple}
+
+\setbeamercolor{author in head/foot}{fg=normal text.fg}
+\setbeamercolor{title in head/foot}{fg=normal text.fg}
+\setbeamercolor{page number in head/foot}{fg=normal text.fg}
+
+\setbeamerfont{author in head/foot}{size=\scriptsize}
+\setbeamerfont{title in head/foot}{size=\scriptsize}
+\setbeamerfont{page number in head/foot}{size=\scriptsize}
+
+\setbeamerfont{bibliography item}{size=\small}
+\setbeamerfont{bibliography entry author}{size=\small}
+\setbeamerfont{bibliography entry location}{size=\small}
+\setbeamerfont{bibliography entry note}{size=\small}
+\setbeamerfont{bibliography entry title}{size=\small}
+
+\setbeamertemplate{section in toc shaded}[default][50]
+\setbeamertemplate{subsection in toc shaded}[default][50]
+\setbeamertemplate{subsubsection in toc shaded}[default][50]
+
+\setbeamertemplate{bibliography entry author}{}
+\setbeamertemplate{bibliography entry location}{}
+\setbeamertemplate{bibliography entry note}{}
+\setbeamertemplate{bibliography entry title}{}
+
+\setbeamertemplate{bibliography item}[text]
+
+\setbeamertemplate{frametitle continuation}[from second][…]
+
+\setbeamertemplate{navigation symbols}{}
+
+\setbeamertemplate{note page}[plain]
+
+\setbeamertemplate{footline}
+{%
+\begin{beamercolorbox}[ht=2.5ex,dp=1.125ex,leftskip=0.01\textwidth,rightskip=0.01\textwidth plus1fil]{footline}%
+	\leavevmode%
+	\makebox[0.32\textwidth][l]{\usebeamerfont{author in head/foot}\usebeamercolor[fg]{author in head/foot}\insertshortauthor}%
+	\makebox[0.34\textwidth]{\usebeamerfont{title in head/foot}\usebeamercolor[fg]{title in head/foot}\insertshorttitle}%
+	\makebox[0.32\textwidth][r]{\usebeamerfont{page number in head/foot}\usebeamercolor[fg]{page number in head/foot}\insertframenumber\,/\,\inserttotalframenumber}%
+\end{beamercolorbox}%
+}
+
+\mode<all>
