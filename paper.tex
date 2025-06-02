@@ -1,14 +1,22 @@
-\documentclass[sigconf,authordraft]{acmart}
+% ! TeX program = pdflatex
+\documentclass[sigconf,natbib=false]{acmart}
 
-\AtBeginDocument{%
-  \providecommand\BibTeX{{%
-    Bib\TeX}}}
+\usepackage{cleveref}
+\usepackage{tabulary}
+
+%% Bibliography style
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmnumeric,
+  sorting=none,
+  backend=biber,
+  ]{biblatex}
+\addbibresource{paper.bib}
 
 \copyrightyear{2025}
 \acmYear{2025}
 \setcopyright{none}
 \acmConference[StudConf '25]{16th Student Conference on Software Engineering and Database Systems}{Summer Term 2025}{Magdeburg, Germany}
-
 
 \begin{document}
 
@@ -24,9 +32,8 @@
 }
 
 \begin{abstract}
-	The increasing scale and complexity of graph-structured data necessitate efficient query processing, especially on modern, heterogeneous hardware architectures.
-	This paper surveys the state-of-the-art in graph traversal languages designed for large-scale graph processing, focusing on both Property Graph models and RDF graphs.
-	It also explores how standard graph algorithms, such as Shortest Path and PageRank, are expressed, integrated, and optimized within query languages for these data models.
+	The increasing scale and complexity of graph-structured data necessitates efficient query processing, especially on modern, heterogeneous hardware architectures.
+	This paper surveys the state-of-the-art in graph traversal languages designed for large-scale graph processing, focusing on both Property Graph models and RDF graphs while also exploring how standard graph algorithms (e.g., Shortest Path, PageRank) are expressed and integrated within these query languages.
 	We examine advanced techniques for optimizing query execution, including parallelization strategies for multi-core CPUs and GPUs, the potential of specialized hardware acceleration using FPGAs, and vectorization via SIMD instructions.
 	By synthesizing these findings, we identify key challenges and outline future research directions aimed at enhancing the performance, scalability, and hardware utilization of graph traversal languages in demanding analytical workloads.
 \end{abstract}
@@ -34,266 +41,338 @@
 \begin{CCSXML}
 	<ccs2012>
 	<concept>
-	<concept_id>00000000.0000000.0000000</concept_id>
-	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_id>10002951.10002952.10003197.10010825</concept_id>
+	<concept_desc>Information systems~Query languages for non-relational engines</concept_desc>
 	<concept_significance>500</concept_significance>
 	</concept>
 	<concept>
-	<concept_id>00000000.00000000.00000000</concept_id>
-	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_id>10010147.10010169</concept_id>
+	<concept_desc>Computing methodologies~Parallel computing methodologies</concept_desc>
 	<concept_significance>300</concept_significance>
 	</concept>
 	<concept>
-	<concept_id>00000000.00000000.00000000</concept_id>
-	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
-	<concept_significance>100</concept_significance>
+	<concept_id>10002951.10002952.10002953.10010146</concept_id>
+	<concept_desc>Information systems~Graph-based database models</concept_desc>
+	<concept_significance>300</concept_significance>
 	</concept>
 	<concept>
-	<concept_id>00000000.00000000.00000000</concept_id>
-	<concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+	<concept_id>10002951.10002952.10003190</concept_id>
+	<concept_desc>Information systems~Database management system engines</concept_desc>
 	<concept_significance>100</concept_significance>
 	</concept>
 	</ccs2012>
 \end{CCSXML}
 
-\ccsdesc[500]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
-\ccsdesc[300]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
-\ccsdesc{Do Not Use This Code~Generate the Correct Terms for Your Paper}
-\ccsdesc[100]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+\ccsdesc[500]{Information systems~Query languages for non-relational engines}
+\ccsdesc[300]{Computing methodologies~Parallel computing methodologies}
+\ccsdesc[300]{Information systems~Graph-based database models}
+\ccsdesc[100]{Information systems~Database management system engines}
 
-%%
-%% Keywords. The author(s) should pick words that accurately describe
-%% the work being presented. Separate the keywords with commas.
-\keywords{Do, Not, Us, This, Code, Put, the, Correct, Terms, for,
-	Your, Paper}
-%% A "teaser" image appears between the author and affiliation
-%% information and the body of the document, and typically spans the
-%% page.
-% \begin{teaserfigure}
-% 	\includegraphics[width=\textwidth]{sampleteaser}
-% 	\caption{Seattle Mariners at Spring Training, 2010.}
-% 	\Description{Enjoying the baseball game from the third-base
-% 		seats. Ichiro Suzuki preparing to bat.}
-% 	\label{fig:teaser}
-% \end{teaserfigure}
+\keywords{Graph Query Languages, Graph Databases, RDF, Property Graphs, SPARQL, Cypher, Gremlin, GQL, GPU Acceleration, FPGA Acceleration, Large-Scale Graph Processing}
 
 \maketitle
 
 \section{Introduction}
 
-\begin{itemize}
-	\item graphs are a natural abstraction for modeling data
-	\item graphs are becoming more important(social networks, scam detection,...)
-	\item modern graphs can have billion or trillion of nodes and edges (to big for one machine)
-	\item directly operating on graph is hard -> query language
-	\item wide variety of query languages available
+Graphs provide a powerful and intuitive abstraction for modeling entities and their complex interconnections across diverse domains, including social networks, biological pathways, knowledge representation, transportation systems, and financial transactions \cite{liu2020LargescaleGraphProcessing}.
+The inherent ability of graphs to represent relationships explicitly makes them invaluable for uncovering patterns, dependencies, and insights that are often obscured in traditional tabular data models \cite{angles2018FoundationsModernQuery}.
+Consequently, graph databases and processing systems have gained significant traction \cite{meckler2024ProcedureModelBuilding}. %todo at least one more citation (market analysis report)
+However, the utility of graph models is increasingly challenged by the sheer scale of real-world data.
+Modern graphs can encompass billions of vertices and trillions of edges, demanding computational resources that far exceed the capabilities of single machines and traditional processing paradigms \cite{liu2020LargescaleGraphProcessing}.
 
-	\item access patterns traversing graphs are often random and unpredictable (poor cache locality)
+Processing these massive graphs presents significant challenges.
+\textit{Firstly}, the large memory footprint often necessitates out-of-core or distributed processing strategies.
+\textit{Secondly}, graph algorithms, particularly those involving traversals, exhibit irregular, data-dependent memory access patterns. %citation (memory wall in graph processing)
+This lack of spatial and temporal locality severely diminishes the effectiveness of standard CPU caches and prefetching mechanisms, leading to performance bottlenecks dominated by memory latency – often termed the "memory wall".
+\textit{Thirdly}, many graph algorithms have a low compute-to-memory access ratio, meaning performance is bound by memory bandwidth rather than processing speed.%citation
+\textit{Finally}, the power-law degree distributions common in real-world graphs complicate parallel processing, leading to load imbalance where some processing units are overwhelmed while others remain idle.%citation
+These inherent difficulties render general-purpose data processing platforms, such as traditional Relational Database Management Systems (RDBMS) requiring complex joins \cite{admin2018NoSQLPerformanceBenchmark} or early parallel frameworks like MapReduce, inefficient for many graph-specific workloads \cite{liu2020LargescaleGraphProcessing}. % peer reviewed paper for performance
 
-	\item modern computers are different
-	\item modern CPUs can have hundreds of cores -> efficient parallelism is needed
-	\item SIMD is getting wider
-	\item GPUs are more prevalent than ever
-	\item FPGAs could also be good
-	\item In-memory computing(IMC) is an active research topic
+Graph traversal, the process of navigating paths and exploring connections within a graph, is a fundamental operation underpinning many critical graph analysis tasks \cite{robinson2015GraphDatabasesNew}, including recommendation systems, fraud detection, route optimization, and social network analysis. %citation for graph database fundamentals
+To facilitate the expression of these complex traversals, specialized graph query languages have been developed.
+Languages such as SPARQL \cite{SPARQL11Query}, Cypher \cite{IntroductionCypherManual}, and Gremlin \cite{ApacheTinkerPopGremlin} provide high-level abstractions tailored to graph structures, allowing users to define intricate patterns and navigational paths.
+Concurrently, advancements in hardware architecture offer potential solutions to the performance bottlenecks of large-scale graph processing.
+Modern hardware, including Graphics Processing Units (GPUs) with their massive parallelism and high memory bandwidth, and Field-Programmable Gate Arrays (FPGAs) offering reconfigurable logic for custom pipelines and energy efficiency, are increasingly explored as accelerators for graph computations \cite{barghiBitGraphFrameworkScaling, besta2019GraphProcessingFPGAs}.
+Hybrid systems, combining CPUs with these accelerators, aim to leverage the strengths of each component \cite{gharaibehEfficientLargeScaleGraph}.
 
-	\item Overview over remaining paper
-\end{itemize}
+This confluence of factors --- the growing scale and importance of graph data, the inherent challenges in processing it efficiently, the development of specialized traversal languages, and the potential of modern hardware --- motivates this survey. This evolution is not merely about incremental speed improvements but about enabling entirely new forms of analysis on interconnected data that were previously computationally infeasible. This survey examines the landscape of graph traversal languages, evaluating their features and suitability for large-scale graph processing, particularly in the context of modern hardware acceleration. It explores the foundational data models (RDF and Labeled Property Graph), details the prominent traversal languages (SPARQL, Cypher, Gremlin, and the emerging GQL/SQL-PGQ standards), discusses the challenges of large-scale processing, and reviews current approaches to hardware acceleration using GPUs and FPGAs.
 
 \section{Background}
 
+Before delving into specific languages and systems, it is essential to establish the foundational concepts: the underlying data models used to represent graphs and the core paradigms for traversing them.
+
 \subsection{Graph Data Models}
 
-\paragraph{Resource Description Framework (RDF)}
-\begin{itemize}
-	\item W3C standard
-	\item represents information as collection of triples
-	\item subject, predicate, object
-	\item these naturaly form a directed, labeled graph (subject and object = node,
-	      predicate = edge)
-	\item edge-centric
+The two dominant data models that underpin most modern graph databases and query languages are the Resource Description Framework (RDF) and the Labeled Property Graph (LPG).
 
-	\item strengths: standardization, formal semantics
-	\item downside: certain structures can't be directly modeled (i.e. properties on
-	      relationships require reification)
-\end{itemize}
+\paragraph{Resource Description Framework (RDF)}
+Originally developed by the W3C for the Semantic Web, RDF provides a standardized way to represent information as a graph \cite{RDFSemanticWeb}.
+Its fundamental unit is the triple, consisting of a subject, a predicate, and an object \cite{RDF11Concepts}.
+A collection of triples forms a directed, edge-labeled graph, where subjects and objects are nodes, and predicates represent labeled edges pointing from the subject to the object.
+
+RDF heavily relies on globally unique Internationalized Resource Identifiers (IRIs, a superset of URIs) for subjects, predicates, and often objects (when they are resources rather than literals) \cite{RDF11Concepts}.
+This global uniqueness is a cornerstone of RDF, designed to facilitate data integration and interoperability across disparate sources, forming the basis of Linked Data. %citation
+
+Properties of entities (nodes) are represented using predicates.
+Attaching multiple properties to a single entity requires multiple triples, each sharing the same subject but having different predicates.
+For instance, describing a person's name and age would involve two separate triples.
+
+RDF graphs are often associated with schemas or ontologies defined using RDF Schema (RDFS) \cite{RDFSchema11} or the Web Ontology Language (OWL) \cite{OWL2Web}.
+These provide vocabularies and formal semantics, enabling logical reasoning and inference over the graph data.
+RDF is prevalent in semantic web applications, knowledge graph construction (especially integrating diverse public datasets like DBpedia, Wikidata), and scenarios where data interoperability and formal reasoning are paramount \cite{ali2021SurveyRDFStores}.
 
 \paragraph{Labeled Property Graph (LPG)}
-\begin{itemize}
-	\item represents data using nodes, relationships, properties, labels
-	\item nodes are entities and can possess multiple labels and properties
-	\item relationships connect pairs of nodes, are directed, have a single label and can have properties
-	\item node-centric
+The LPG model is widely adopted in commercial and open-source graph databases, often favored for its flexibility and performance characteristics \cite{LPGVsRDF,howard2024RDFVsProperty,KnowledgeGraphsRDF}. % citation of peer reviewed literature
+LPGs consist of nodes (vertices representing entities) and directed relationships (edges representing connections between nodes)\cite{IntroductionCypherManual,francis2018CypherEvolvingQuery}.
+Identifiers for nodes and relationships are typically local to the specific graph database instance.
+Nodes can have zero or more labels (e.g., \texttt{:Person}, \texttt{:Customer}), acting as types or categories, while relationships have at most one relationship type (e.g., \texttt{:KNOWS}, \texttt{:PURCHASED}).
 
-	\item strengths: often schemaless/-flexible but can also support rigid
-	      schemas, flexible data modeling, intuitive representation
-	\item downsides: lack of standardization (less with openCypher)
-\end{itemize}
+The defining feature of LPGs is that both nodes and relationships can have properties --- arbitrary key-value pairs that store attributes or metadata directly on the graph elements.
+For example, a \texttt{:Person} node might have \texttt{\{name: "Alice", age: 30\}} properties, and a \texttt{:KNOWS} relationship might have a \texttt{\{since: 2015\}} property.
 
-\subsection{Large-Scale Graph Processing}
+LPGs are often described as schema-flexible or schema-optional: While schemas can be defined or enforced, the model inherently allows for adding new labels or properties without strict predefined structures, making it suitable for agile development and evolving datasets \cite{deutsch2022GraphPatternMatching}.
+They are commonly used in applications demanding real-time performance and schema flexibility, such as social network analysis, recommendation engines, fraud detection, identity and access management, and network infrastructure modeling. % citation
 
-what things have to be thought about when moving to a cluster of machines?
+\paragraph{Key Differences and Implications:}
+The choice between RDF and LPG represents a fundamental trade-off.
+RDF's strength lies in its W3C standardization, URI-based global identification, and support for formal semantics and reasoning, making it ideal for integrating heterogeneous data across the web and performing logical inference. % citation
+However, representing everything as triples can lead to verbosity and potentially slower traversal performance, especially for queries involving multiple properties of a single entity or deep navigational paths, sometimes referred to as "triple explosion" \cite{shimizu2024KnowWhereGraphOntology}.
+LPGs, conversely, offer a more intuitive modeling experience for many developers, direct property attachment, and potentially higher performance for complex graph traversal and analytics tasks due to their more direct representation of nodes, edges, and properties \cite{abreuChoosingGraphDatabases}.
 
-\begin{itemize}
-	\item irregular data access (poor spatial and temporal locality, cache misses)
-	\item memory bandwidth limitations (when just doing pointer chasing and comparisons, cpu no longer bottleneck)
-	\item scalability and partitioning (optimal partitioning is np-hard, different partitioning strategies may favor different types of queries)
-	\item parallelism is hard to exploit due to data dependencies
-	\item graphs are not static but change (has to be regarded for partitioning, etc.)
-\end{itemize}
+This fundamental difference in design philosophy --- standardization and semantics versus performance and flexibility --- often dictates the choice of data model, which in turn influences the selection of appropriate query languages and system architectures.
 
-What should the system do? Graph traversal queries (friends-of-friends) or global graph algorithms (pagerank)? Probably has to be designed differently for each
+\subsection{Core Traversal Paradigms}
+Graph query languages typically employ one or a combination of two fundamental paradigms for exploring graph data:
 
-\section{Established Graph Traversal Languages}
+\paragraph{Graph Pattern Matching (Declarative):}
+This paradigm focuses on describing what data to retrieve by specifying a structural pattern.
+The query defines a subgraph template, potentially including constraints on node/edge labels and properties, and the system searches for all parts of the data graph that match this template \cite{deutsch2022GraphPatternMatching}.
+The matching process can be based on graph isomorphism (requiring an exact structural match) or homomorphism (allowing mappings where multiple query nodes/edges map to the same data node/edge) \cite{angles2018FoundationsModernQuery}.
+Languages like SPARQL (using Basic Graph Patterns - BGPs), Cypher (using its ASCII-art MATCH clauses), and the upcoming GQL/SQL-PGQ standards \cite{ISOIECSQL,ISOIECGQL}
+(using GPML) heavily rely on declarative pattern matching.
 
-\subsection{(open-)Cypher}
-\begin{itemize}
-	\item originally developed for Neo4j, openCypher is an open standard developed from that
-	\item declarative, property graphs
-	\item ASCII-art-like syntax -> tries to make queries intuitiv (like whiteboard)
-	\item common keywords: MATCH, WHERE, RETURN, WITH
-	\item fixed/variable length paths
-	\item semantics are like pattern matching
-	\item query pipeline: parsing, semantic verification, optimizing (logical and physical execution plan), executing the plan
-	\item used in many systems: Neo4j, SAP HANA Graph, RedisGraph, Memgraph, AgensGraph, Kùzu
+\paragraph{Navigational Traversal (Imperative/Functional):}
+This paradigm focuses on describing how to explore the graph.
+Queries specify a sequence of steps or operations starting from known nodes or edges and following relationships based on type, direction, or properties \cite{TinkerPopDocumentation}.
+This approach is often more procedural, defining an explicit path through the graph.
+Gremlin \cite{ApacheTinkerPopGremlin}, with its step-based functional syntax, is the prime example of a navigational language.
+However, features like SPARQL's Property Paths \cite{SPARQL11Property} and Cypher's variable-length path expressions \cite{VariablelengthPatternsCypher} also provide navigational capabilities within primarily pattern-based languages.
 
-	\item optimization on efficient pattern matching, path traversal algorithms, leveraging parallelism
-	\item challenges on incremental views, continuous queries, vector search, temporal extensions
-\end{itemize}
+While conceptually distinct, modern graph query languages increasingly blend these paradigms.
+SPARQL, fundamentally pattern-based, incorporated Property Paths in version 1.1 to enhance navigational expressiveness \cite{SPARQL11Query}.
+Cypher's core MATCH clause defines patterns, but it includes syntax for variable-length paths (*) enabling some limited navigation.
+Gremlin, primarily navigational, added a declarative match() step to simplify certain pattern-finding tasks \cite{TinkerPopDocumentation}.
+This convergence highlights that practical graph querying often necessitates both finding specific, well-defined structures (pattern matching) and exploring paths whose length or exact structure may not be known beforehand (navigation).
+Neither paradigm alone appears sufficient to cover the full spectrum of common graph analysis tasks, leading languages to incorporate features from both.
 
-\subsection{Gremlin}
-\begin{itemize}
-	\item language of Apache TinkerPop framework
-	\item property graphs
-	\item functional, data-flow language
-	\item supports procedural and declarative queries
-	\item query is sequence of steps evaluated from left to right (traversal-oriented)
-	\item each step performs an atomic operation on the stream of data
-	\item designed to be embedded within host programming languages
+\section{Graph Traversal Languages}
 
-	\item OLTP and OLAP mode
-	\item optimization through rewriting sequence of steps before execution
-	\item parallel execution is possible with GraphComputer model (RDMA, adaptive parallelism control), GPU acceleration gets explored within BitGraph
-\end{itemize}
+Building upon the foundational models and paradigms, several query languages have emerged, each with distinct syntax, semantics, and strengths tailored to specific data models and use cases.
 
 \subsection{SPARQL}
-\begin{itemize}
-	\item W3C query language for RDF graphs
-	\item declarative, based on graph pattern matching
-	\item similar syntax to SQL (SELECT, WHERE, FILTER, OPTIONAL)
-	\item the core is the basic graph pattern (BGP, set of triple patterns) with variables allowed at any place
-	\item semantics is finding all subgraphs that match the BGP, while binding the variables in the patterns to the RDF terms from the data
-	\item special case is the possibility of handling non-explicit triples, that can be inferred based on ontologies
-	\item SPARQL 1.1 allows specifying regular expressions over the edge label, enabling easier reachability queries
+SPARQL is the W3C standard query language for RDF data \cite{SPARQL11Query}.
+Its syntax typically uses clauses like \texttt{SELECT} for returning variable bindings, \texttt{CONSTRUCT} for building new RDF graphs, \texttt{ASK} for checking pattern existence, and \texttt{DESCRIBE} for retrieving resource information.
+The core logic resides in the \texttt{WHERE} clause, containing Basic Graph Patterns (BGPs) which consist of conjunctions of triple patterns (subject predicate object), where terms can be IRIs, literals, or variables (prefixed with \texttt{?} or \texttt{\$)}.
+Modifiers like \texttt{FILTER}, \texttt{OPTIONAL}, \texttt{UNION}, and \texttt{MINUS} allow for complex query construction.
+SPARQL 1.1 introduced features like aggregates, subqueries, VALUES for inline data, and property paths.
+SPARQL 1.2 (currently in draft) aims to add support for RDF-star (triple terms) and enhanced language/direction handling \cite{SPARQL12Query}.
 
-	\item query processing is finding efficient execution plans for the joins required to match a BGP
-	\item specialized indexing structures for triples
-	\item techniques for handling RDF reasoning
-	\item vectorization and parallel processing are desirable
-\end{itemize}
+SPARQL's primary mechanism for traversal and pattern matching is BGP matching, evaluated under homomorphism-based bag semantics \cite{angles2018FoundationsModernQuery}.
+Property Paths provide powerful navigational capabilities, enabling regular path queries over predicate sequences, similar in expressive power to regular expressions for paths \cite{SPARQL11Property}.
+For paths involving \texttt{*} or \texttt{+}, set semantics are used to avoid infinite results in cyclic graphs.
 
-\subsection{Comparative Analysis}
-\begin{itemize}
-	\item show similarities and differences
-	\item procedural vs declarative for large/small queries
-	\item table, for easy comparison (data model, paradigm, turing-complete, extensibility, typical optimization focus)
-\end{itemize}
+As a W3C standard, SPARQL ensures high interoperability and is key for querying Linked Data and semantic knowledge graphs \cite{khanKnowledgeGraphsQuerying,ali2021SurveyRDFStores}.
+Its support for entailment regimes allows querying based on inferred knowledge \cite{RDF11Semantics}.
+However, its reliance on the triple model can make queries verbose and potentially lead to performance challenges in deep traversals or complex joins \cite{abreuChoosingGraphDatabases}.
+Modeling properties on relationships is less direct than in LPGs.
 
-\section{Emerging Standards}
+\subsection{(open-)Cypher}
+Cypher \cite{IntroductionCypherManual} is a declarative query language initially developed for the Neo4j \cite{2025Neo4jGraphDatabase} property graph database, now supported by various systems (e.g., Memgraph \cite{Memgraph}, FalkorDB \cite{2025FalkorDBGraphDatabase}) and being standardized through the openCypher project \cite{OpenCypherOpenCypher} and GQL \cite{ISOIECGQL} efforts.
+Cypher is known for its intuitive, ASCII-art syntax for representing graph patterns. %, such as in % todo create figure
+Queries typically follow a \texttt{MATCH}, \texttt{WHERE}, \texttt{RETURN} structure.
+Clauses are processed linearly, conceptually passing tables of results between them.
 
-\subsection{ISO/IEC GQL}
-\begin{itemize}
-	\item new standard in April 2024 (ISO/IEC 39075)
-	\item first new ISO db language since SQL itself
-	\item supports querying, DDL, DML
-	\item aims to fuse proven concepts from existing graph query languages (openCypher, PGQL, GSQL, etc.) while aligning with SQL
-	\item ASCII-art like Cypher
-	\item schema-flexible and -constrained
-	\item SQL compatible data types
-	\item defines a transaction model
-\end{itemize}
+Cypher's \texttt{MATCH} clause performs pattern matching, typically using isomorphism-based semantics with a no-repeated-edges constraint by default.
+It allows filtering on labels and properties directly within the pattern syntax.
+For navigation, Cypher supports variable-length path specifications like \texttt{-[*3..5]->}, allowing traversal along paths matching a specific relationship type within a given length range.
+Functions like \texttt{astar} and \texttt{pageRank} provide specific pathfinding and analytics capabilities \cite{IntroductionCypherManual}.
 
-\subsection{SQL/PGQ}
-\begin{itemize}
-	\item goal is to allow graph queries within SQL while leveraging existing RDMS
-	\item defines syntax for LPGs on top of relational tables
-	\item focuses on read-only graph queries
-\end{itemize}
+Cypher's visual syntax is often considered highly readable, developer-friendly, and intuitive for beginners, contributing to its widespread adoption \cite{francis2018CypherEvolvingQuery}.
+Historically, the lack of a formal standard was seen as a weakness, though this is being addressed by openCypher \cite{OpenCypherOpenCypher} and GQL \cite{ISOIECGQL}.
+While expressive, its path patterns are a restricted form of regular path queries and may require procedural workarounds for some complex path constraints and even shortest path queries. % citation
 
-\section{Accelaring Traversal on Modern Hardware}
-\subsection{Parallel Processing on Multi-Core CPUs}
-\begin{itemize}
-	\item parallel, simd
-	\item bulk synchronous parallel (BSP), asynchronous models
-	\item load balancing between cores, minimizing synchronization and communication
-\end{itemize}
+\subsection{Gremlin}
 
-\subsection{Vectorization (SIMD)}
-\begin{itemize}
-	\item manual or auto vectorization
-	\item AoS vs SoA
-	\item data quantization techniques can increase performance even more
-	\item challenges are branches -> masking/branchless code
-\end{itemize}
+Gremlin is the graph traversal language of the Apache TinkerPop framework, designed to work across various graph databases (OLTP) and graph processing systems (OLAP) \cite{ApacheTinkerPopGremlin}.
+It is a functional, data-flow language where traversals are constructed by composing a sequence of steps.
+A traversal typically starts from a graph source \texttt{(g)} and applies steps like \texttt{V()}, \texttt{E()}, \texttt{has()}, \texttt{values()}, \texttt{out()}, \texttt{in()}, and \texttt{groupCount()}.
+Gremlin traversals can be embedded within various host programming languages (Java, Python, Go, etc.), allowing graph traversals alongside application logic.
+
+Gremlin excels at navigational traversal due to its step-based composition.
+Complex paths and iterative traversals can be expressed using constructs like \texttt{repeat().until()} \cite{angles2018FoundationsModernQuery}.
+While primarily imperative and navigational, Gremlin also supports declarative pattern matching via the \texttt{match()} step, evaluated under homomorphism semantics.
+The path() step allows retrieving the full traversal path.
+
+Gremlin's major strengths are its vendor-agnostic nature via the TinkerPop standard, promoting portability, the embedding of itself into other programming languages, allowing programmers to work in a familiar environment, and its expressiveness, allowing for complex procedural traversals \cite{angles2018FoundationsModernQuery}.
+However, the step-based syntax can be more verbose than Cypher for simple patterns, and the imperative nature can sometimes make query optimization more challenging \cite{liu2020LargescaleGraphProcessing}.
+
+\subsection{GQL and SQL/PGQ}
+
+Recognizing the fragmentation in the LPG query language space, the ISO/IEC JTC1/SC32 working group has published GQL \cite{ISOIECGQL} as a new standard, declarative language for property graphs, alongside SQL/PGQ \cite{ISOIECSQL}, an extension to SQL for querying property graphs.
+The motivation is to provide a standardized interface for property graphs, analogous to SQL, aiming to improve interoperability, portability, and tooling support.
+
+Both GQL and SQL/PGQ are built upon a common core data model and sub-language called Graph Pattern Matching Language (GPML) \cite{deutsch2022GraphPatternMatching}.
+GPML allows defining complex path patterns with nodes, edges, labels, properties, and quantifiers (e.g., \texttt{*}, \texttt{+,} \texttt{\{n,m\}}).
+Key features include path patterns, variable binding, path quantifiers, restrictors (e.g., \texttt{ACYCLIC}, \texttt{TRAIL} to ensure finite results), selectors (e.g., \texttt{SHORTEST}, \texttt{CHEAPEST}), and path pattern union (\texttt{|}).
+
+GQL is envisioned as a standalone language with full CRUD capabilities for native graph databases.
+SQL/PGQ allows users to define property graph views over existing SQL tables and execute read-only GPML queries against these views, integrating graph querying into the SQL ecosystem.
+The design of GQL and SQL/PGQ draws heavily on experiences from existing languages, notably Cypher, aiming to incorporate best practices while establishing a formal standard.
+
+\subsection*{Language Summary and Evolution}
+
+The development trajectory of these languages illustrates a dynamic interplay between the need for expressive power tailored to graph structures and the practical demands of standardization and interoperability.
+Early efforts like SPARQL provided a crucial standard for the RDF world, but its limitations spurred the development of LPG-centric languages like Cypher and Gremlin.
+This diversification, while fostering innovation, led to ecosystem fragmentation.
+The current standardization efforts around GQL and SQL/PGQ represent a significant attempt to unify the property graph landscape, potentially sacrificing some bespoke features for the benefits of a common foundation.
+A comparative summary of the key features of these languages is presented in \cref{tab:summaryGraphLanguages}.
+This overview highlights their respective data models, syntactical styles, primary paradigms, and strengths, reflecting the ongoing evolution towards more powerful and standardized graph querying capabilities.
+
+\begin{table*}
+	\centering
+	\caption{Comparative Summary of Graph Traversal Languages}
+	\label{tab:summaryGraphLanguages}
+	\begin{tabulary}{\linewidth}{|L||L|L|L|L|} % Using L for left-justified, auto-wrapping
+		\hline
+		\textbf{Feature} & \textbf{SPARQL} & \textbf{(open-)Cypher} & \textbf{Gremlin} & \textbf{GQL / SQL/PGQ} \\
+		\hline
+		Data Model & RDF & LPG & LPG & LPG \\
+		\hline
+		Syntax Style & Triple-based, SQL-like clauses & ASCII-art patterns, Declarative clauses & Functional steps, Imperative/Declarative mix & Declarative patterns, SQL-like (SQL/PGQ) \\
+		\hline
+		Primary Paradigm & Declarative (BGP) with Navigational extensions (Property Paths) & Declarative (MATCH) with Navigational extensions (Variable-length paths) & Navigational (steps) with Declarative extensions (match()) & Declarative (GPML) \\
+		\hline
+		Core Pattern Matching & BGP (Homomorphism) & MATCH clause (Isomorphism default) & \texttt{match()} step (Homomorphism) & Path Patterns (Homomorphism, with options) \\
+		\hline
+		Core Navigation & Property Paths (\texttt{*}, \texttt{+}, \texttt{/}, \texttt{\^}) & Variable-length paths (\texttt{*}), \texttt{shortestPath} functions & Step-based composition (e.g., \texttt{out()}, \texttt{repeat().until()}) & Path quantifiers, selectors (e.g., \texttt{SHORTEST}) \\
+		\hline
+		Standardization & W3C Recommendation & openCypher initiative; core adopted in GQL & Apache TinkerPop Project (de facto standard) & ISO/IEC Standard \\
+		\hline
+		Key Strength & Interoperability, Reasoning, Linked Data ecosystem & Intuitive syntax, Native LPG fit, Developer popularity & Vendor agnostic, Highly expressive traversals, Embeddable in host languages & Formal standardization for LPGs, SQL integration (SQL/PGQ) \\
+		\hline
+		Key Weakness & Potential traversal performance, Verbosity for property-rich nodes & Historically no formal standard, Some complex path query limitations & Verbosity for simple patterns, Optimization can be challenging & Emerging standard, adoption curve, complexity of a full standard \\
+		\hline
+	\end{tabulary}
+\end{table*}
+
+\section{Hardware Acceleration for Graph Traversal}
+Standard CPUs often struggle with graph workloads due to irregular memory accesses defeating cache locality, leading to stalls (the "memory wall") \cite{liu2020LargescaleGraphProcessing}.
+While multicore CPUs offer parallelism, it might be insufficient for massive graphs, and synchronization can be costly. % citation
+Given these significant challenges posed by large-scale graph processing, particularly the memory bottleneck and irregular access patterns, hardware accelerators like GPUs and FPGAs are increasingly employed.
 
 \subsection{GPU Acceleration}
-\begin{itemize}
-	\item GPUs are good for data-intensive things like graph processing
-	\item offloading computationally intensive parts of a query or entire algorithms to the GPU
-	\item potentially partitioning is needed
-
-	\item hard to program effectively (diverging execution paths within warps, uncoalesced memory accesses, mapping algorithms on MPP, PCIe throughput vs latency)
-	\item but if done can be highly effective
-\end{itemize}
+GPUs feature thousands of simple cores (SIMD/SIMT) and high memory bandwidth, suitable for data-intensive tasks.
+Techniques include exploiting massive parallelism, vectorization/batching (e.g., BitGraph's traverser sets), formulating algorithms as sparse matrix operations (SpMV), using optimized data structures (CSR/CSC, Maelstrom hash tables), and careful kernel optimization to maximize memory coalescing and minimize warp divergence.
+Example systems include BitGraph \cite{barghiBitGraphFrameworkScaling}, which accelerates Gremlin queries (especially temporal ones) showing speedups up to 35x 18, and TOTEM \cite{gharaibehEfficientLargeScaleGraph}, a hybrid CPU-GPU engine using BSP and intelligent partitioning.
+GPUs excel at data-parallel algorithms like BFS or PageRank but can struggle with deep, irregular traversals. % citation
 
 \subsection{FPGA Acceleration}
-\begin{itemize}
-	\item allows for designing custom hardware for specific applications
-	\item neighbor list traversal, property filtering, pattern matching
-	\item graph partitioning and data placement strategies are necessary
-	\item specialization is also hard when different kinds of queries need to be processed
-	\item potential for extreme performance and energy
-\end{itemize}
+FPGAs offer reconfigurable hardware for custom circuits, operating at lower clock frequencies but achieving high performance through massive fine-grained parallelism, deep pipelining, and potentially higher energy efficiency \cite{besta2019GraphProcessingFPGAs}.
+Example systems include GraphScale \cite{dann2024GraphScaleScalableProcessing}(asynchronous, compressed, multi-channel memory), GraphMatch \cite{dann2024GraphMatchSubgraphQuery}(subgraph query processing), and DSLs like Graphitron \cite{zhang2024GraphitronDomainSpecific} that simplify accelerator generation.
+Techniques involve creating custom pipelines for specific operations (e.g., GraphMatch's set intersection), implementing asynchronous processing (e.g., GraphScale), processing compressed data structures directly, efficiently utilizing limited on-chip memory (BRAM/URAM) via caching or partitioning, and exploiting parallel external memory interfaces (DDR4/HBM).
+FPGAs are promising for high throughput, energy efficiency, streaming data, and irregular algorithms, but hardware design complexity remains a barrier \cite{besta2019GraphProcessingFPGAs}.
 
-\subsection*{Summary}
-\begin{itemize}
-	\item no hardware platform is universally the best -> combination should be chosen
-	\item explain, when to choose which (latency -> cpu, throughput -> gpu, ...)
-	\item comparison table (pros, cons, key techniques, example, applicability to graph traversal)
-\end{itemize}
+\subsection{Hybrid Approaches (CPU + Accelerator)}
+These systems combine CPU strengths (complex control flow, large memory) with accelerator parallelism.
+The core concept involves partitioning the workload, assigning parallel-friendly parts to the accelerator and complex/irregular parts to the CPU \cite{gharaibehEfficientLargeScaleGraph}.
+Effective workload partitioning, often based on graph structure (e.g., vertex degree in TOTEM), is critical.
+Minimizing communication latency and maximizing bandwidth between CPU and accelerator (via PCIe) using techniques like message aggregation and overlapping communication/computation is essential \cite{dann2023FPGAbasedQueryAcceleration}.
 
-\section{Advanced Query Processing Optimizations}
-optional (probably to much, if included; Or just mention in other parts)
-\begin{itemize}
-	\item factorization
-	\item morsel-driven-parallelism
-	\item worst-case optimal joins (WCOJ)
-	\item GraphBLAS
-\end{itemize}
+\subsection*{Platform Characteristics and Trade-offs}
+The choice between GPU and FPGA for graph traversal acceleration involves significant trade-offs.
+GPUs generally offer a more mature programming ecosystem (e.g., CUDA, OpenCL) and are often perceived as easier to program than FPGAs.
+FPGAs, while demanding greater development effort and specialized hardware description languages (HDLs) or high-level synthesis (HLS) tools, provide the potential for highly customized data paths and memory hierarchies, leading to superior performance-per-watt and effectiveness for specific, highly irregular, or streaming graph workloads \cite{besta2019GraphProcessingFPGAs}.
+Hybrid systems aim to achieve a balance by leveraging the respective strengths of CPUs and accelerators, but introduce complexities in workload partitioning, data movement, and coherency management \cite{gharaibehEfficientLargeScaleGraph}.
+A clear trend across these platforms is the development of higher-level programming abstractions and domain-specific languages (DSLs) --- such as those seen in TOTEM \cite{gharaibehEfficientLargeScaleGraph}, Graphitron \cite{zhang2024GraphitronDomainSpecific}, and ThunderGP \cite{chen2022ThunderGPResourceEfficientGraph} --- designed to simplify the development of accelerated graph applications and broaden their accessibility.
+\Cref{tab:hardwarePlatforms} provides a comparative overview of these hardware acceleration platforms, highlighting their architectural strengths, weaknesses, and typical use cases.
 
-\section{Graph Algorithms via Traversal Languages}
-\begin{itemize}
-	\item How do Cypher, Gremlin and SPARQL support common graph operations?
-	\item shortest path, PageRank
-\end{itemize}
+\begin{table*}
+	\centering
+	\caption{Hardware Acceleration Platforms for Graph Traversal}
+	\label{tab:hardwarePlatforms}
+	\begin{tabulary}{\linewidth}{|L||L|L|L|L|}
+		\hline
+		Feature               & CPU Baseline                                     & GPU                                   & FPGA                                             & Hybrid CPU+GPU/FPGA \\
+		\hline
+		\hline
+		Key Architectural Strength & Complex control flow, Large Memory & Massive SIMD/SIMT parallelism, High BW & Custom pipelines, Reconfigurability, Energy Eff. & Combines CPU flexibility \& Accelerator speed \\
+		\hline
+		Key Weakness/Challenge & Memory wall, Limited parallelism & Irregularity (divergence), PCIe BW & Programming complexity, Lower clock speed & Partitioning complexity, Communication BW/Lat \\
+		\hline
+		Typical Accel. Techniques & Caching, Prefetching, SIMD & Vectorization, SpMV, Kernel Opt. & Custom pipelines, On-chip memory, Async proc. & Workload partitioning, Communication Opt. \\
+		\hline
+		Suitable Traversal Types & Sequential, Complex logic & Data-parallel (BFS, PageRank) & Streaming, Highly irregular patterns & Mixed workloads \\
+		Programming Difficulty & Low-Moderate & Moderate-High (CUDA/OpenCL) & Very High (HDL/HLS) 64 & High (Partitioning, Sync) \\
+		\hline
+	\end{tabulary}
+\end{table*}
 
-\section{State-of-the-Art, Challenges, and Future}
-\begin{itemize}
-	% SOTA
-	\item What languages seem promising? What abstractions do they provide?
-	\item How can common graph algorithms be modeled in these languages?
-	\item What hardware is used and explored?
+\section{Large-Scale Graph Processing \& Traversal}
+Effectively executing traversal queries expressed in languages like SPARQL, Cypher, or Gremlin on massive graphs necessitates sophisticated system-level techniques to overcome inherent performance challenges.
 
-	      % Challenges
-	\item What Query Optimization techniques haven't gone from theory to practice?
-	\item How to manage Scalability Limits?
-	\item How to handle dynamic graphs and schema evolution?
-	\item Standardized Benchmarking?
+\subsection{System-Level Challenges}
+Processing graphs at scale pushes the limits of conventional computing systems.
+Large real-world graphs often exceed the main memory capacity of a single machine, requiring out-of-core techniques or distributed approaches \cite{liu2020LargescaleGraphProcessing}.
+Graph algorithms, especially traversals, lead to highly irregular and unpredictable memory access patterns, diminishing the effectiveness of CPU caches and memory prefetching. % citation
+In distributed systems, traversals frequently cross partition boundaries, incurring significant network communication overhead. % citation
+Furthermore, the power-law degree distributions common in real-world graphs can cause severe load imbalance during parallel processing. % citation
 
-	      % Future
-	\item Learded Query Optimization
-	\item Adaptive/Dynamic Query Processing
-	\item Hardware-Software Co-design and Unified Execution Runtimes
-\end{itemize}
+\subsection{Processing Techniques for Traversal}
+To mitigate these challenges, graph processing systems employ various specialized techniques.
+Graph partitioning divides large graphs for distributed or out-of-core processing, using strategies like vertex-cut or edge-cut to minimize communication while balancing load \cite{liu2020LargescaleGraphProcessing}.
+Indexing, including adjacency lists and property indexes, accelerates data lookup.
+Query optimization involves reordering joins, estimating selectivity, pushing down filters, and choosing appropriate physical operators \cite{ali2021SurveyRDFStores}. % more citations
+Efficient in-memory representation using formats like Compressed Sparse Row (CSR) or Compressed Sparse Column (CSC) reduces memory footprint and bandwidth requirements, often combined with compression techniques \cite{feng2023KUZUGraphDatabase,liu2020LargescaleGraphProcessing}. % citations
+Different execution models, such as vertex-centric, edge-centric, or subgraph-centric, dictate computation flow, often structured using the Bulk Synchronous Parallel (BSP) model \cite{liu2020LargescaleGraphProcessing}.
+More recent techniques, such as Factorization \cite{olteanuFactorizedDatabases2016} and worst-case optimal joins \cite{mhedhbiOptimizingOnetimeContinuous}\cite{mhedhbiOptimizingSubgraphQueries2019} show promising results in new research systems such as K{\`u}zu \cite{feng2023KUZUGraphDatabase}.
+
+\subsection{System Examples}
+Different systems embody different trade-offs: In-memory databases like Memgraph \cite{Memgraph} prioritize performance for graphs fitting in RAM, often using LPG/Cypher.
+Native graph databases like Neo4j \cite{2025Neo4jGraphDatabase} feature optimized storage layers and support LPG/Cypher, often with integrated analytics libraries \cite{IntroductionCypherManual}.
+Distributed frameworks like GraphScope Flex \cite{he2023GraphScopeFlexLEGOlike} and TigerGraph \cite{deutsch2019TigerGraphNativeMPP} scale across clusters for massive graphs, supporting multiple interfaces and execution models.
+GraphBLAS-based systems like FalkorDB \cite{2025FalkorDBGraphDatabase} represent graphs as sparse matrices, leveraging optimized linear algebra libraries for computation via the GraphBLAS API \cite{GraphBLAS,buluc2017DesignGraphBLASAPI}, often using Cypher as the query language.
+
+\subsection*{System Design Considerations}
+
+The diversity of these systems underscores that no single architecture or processing technique is universally optimal for all large-scale graph traversal workloads.
+Optimizing performance necessitates a co-design approach, carefully considering the interplay between the graph algorithms employed, the underlying data structures, graph partitioning strategies, and the chosen execution model.
+For instance, edge-centric execution models can benefit significantly from data layouts that promote sequential memory access, whereas vertex-centric models must employ strategies to mitigate the cost of frequent random memory accesses common in graph traversals \cite{liu2020LargescaleGraphProcessing}.
+In hybrid CPU-accelerator systems, effective workload partitioning is paramount; this might involve strategically assigning different portions of the graph (e.g., based on vertex degree or community structure) or different phases of an algorithm to the most suitable processing unit to maximize throughput and resource utilization.
+
+\section{Conclusion and Future Directions}
+The processing of large-scale graphs using expressive traversal languages presents a complex interplay between data modeling, language design, system architecture, and hardware capabilities.
+This survey has explored the landscape, highlighting the evolution from foundational models like RDF and LPG to specialized query languages such as SPARQL, Cypher, and Gremlin, and the ongoing efforts towards standardization with GQL and SQL/PGQ.
+The inherent challenges of massive graph scale, irregular memory access, and parallel load balancing have driven the development of sophisticated system-level techniques and the adoption of hardware accelerators like GPUs and FPGAs.
+
+RDF, with SPARQL, provides a standardized, interoperable framework ideal for semantic data integration and reasoning, while LPGs, typically queried with Cypher or Gremlin, offer greater schema flexibility and often superior performance for traversal-intensive analytics.
+Modern languages increasingly blend declarative pattern matching and imperative navigation.
+However, executing these traversals efficiently at scale remains difficult.
+CPUs hit the memory wall, GPUs struggle with irregularity, and FPGAs present programmability barriers.
+Hybrid systems offer promise but require careful partitioning and communication management.
+
+Despite significant progress, several open challenges and promising future directions remain.
+\textit{Firstly}, the finalization and widespread adoption of GQL and SQL/PGQ are crucial for the property graph ecosystem.
+Further research is needed on efficient transformations between RDF/RDF-star and LPG models to bridge the interoperability gap.
+\textit{Secondly}, future systems should move towards tighter hardware/software co-design, with hardware-aware compilers and potentially language extensions for locality hints.
+\textit{Thirdly}, efficiently handling dynamic and streaming graphs, including updates and traversals over evolving data, remains a significant challenge, especially for consistency and performance in distributed or accelerated environments.
+\textit{Fourthly}, the synergy between graph traversal and graph machine learning (e.g., GNNs) is a rapidly growing area, requiring unified platforms and investigation into querying multimodal knowledge graphs.
+\textit{Fifthly}, standardized, representative benchmarks covering diverse graphs, query types, and system scales are desperately needed, along with fair comparison methodologies across different architectures.
+\textit{Lastly}, simplifying the user experience for querying large graphs and developing applications on accelerated hardware through better abstractions is paramount.
+
+The trajectory suggests a future dominated by heterogeneous computing environments combining CPUs, GPUs, and potentially FPGAs, managed by sophisticated software layers.
+These layers will need unified programming abstractions, intelligent workload partitioning, and efficient data management across diverse hardware.
+Robust standards, usable abstractions, and comprehensive benchmarks will be critical for realizing the full potential of graph traversal languages in the future.
+
+\printbibliography
 
 \end{document}
